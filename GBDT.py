@@ -14,7 +14,7 @@ from catboost import Pool, CatBoostClassifier, CatBoostRegressor, sum_models
 
 
 class GBDT(object):
-    def __init__(self, task, graph, train_mask, test_mask, val_mask):
+    def __init__(self, task, graph, train_mask, test_mask, val_mask,kernel=None):
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.task = task
@@ -28,8 +28,8 @@ class GBDT(object):
         self.iter_per_epoch = 10
         self.depth = 6
         self.gbdt_lr = 0.1
-        self.propagation_X = UnfoldindAndAttention(lam=20.0, prop_step=5)
-        self.propagation_y = UnfoldindAndAttention(lam=2.0, prop_step=5)
+        self.propagation_X = UnfoldindAndAttention(lam=20.0, prop_step=5,kernel=kernel)
+        self.propagation_y = UnfoldindAndAttention(lam=2.0, prop_step=5,kernel=kernel)
         
         
 

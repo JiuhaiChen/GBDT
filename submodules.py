@@ -22,7 +22,19 @@ class Propagate(nn.Module):
 
     def forward(self, graph, Y, X, alp, lam):
         return (1 - alp) * Y + alp * lam * self.prop(graph, Y, lam) + alp * D_power_bias_X(graph, X, -1, lam, 1 - lam)
+class KernelPropagate(nn.Module):
+    def __init__(self,kernel):
+        super().__init__()
+        self.kernel=kernel.cuda()
 
+    def prop(self, Y):
+
+        Y=torch.matmul(self.kernel,Y)
+
+        return Y
+
+    def forward(self, graph, Y, X, alp, lam):
+        return (1 - alp) * Y + alp * lam * self.prop(Y) + alp * D_power_bias_X(graph, X, -1, lam, 1 - lam)
 
 class PropagateNoPrecond(nn.Module):
     def __init__(self):

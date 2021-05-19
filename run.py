@@ -12,7 +12,7 @@ import networkx as nx
 import dgl
 import fire
 import pdb
-
+from modules import LaplacianKernel
 
 class RunModel:
 
@@ -77,11 +77,15 @@ class RunModel:
         graph = dgl.remove_self_loop(graph)
         graph = dgl.add_self_loop(graph)
         graph = graph.to(self.device)
-
-     
+        use_kernel=True
+        if use_kernel:
+            lapKernel=LaplacianKernel(graph)
+            diffusion_kernel=lapKernel.linear_kernel(sigma=0.1)
+        else:
+            diffusion_kernel=None
         params = {}
         print('Start training...')
-        gbt = GBDT(task, graph, train_mask, test_mask, val_mask)
+        gbt = GBDT(task, graph, train_mask, test_mask, val_mask,kernel=diffusion_kernel)
         metrics = gbt.train(params,
                 encoded_X,
                 target,
