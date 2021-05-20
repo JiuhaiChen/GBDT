@@ -78,14 +78,21 @@ class RunModel:
         graph = dgl.add_self_loop(graph)
         graph = graph.to(self.device)
         use_kernel=True
+        kernel_type="linear"
         if use_kernel:
             lapKernel=LaplacianKernel(graph)
-            diffusion_kernel=lapKernel.linear_kernel(sigma=0.1)
+            if kernel_type=="diffusion":
+                kernel=lapKernel.diffusion_kernel(sigma=.2)
+            elif kernel_type=="linear":
+                kernel=lapKernel.linear_kernel(sigma=10**-1)
+            elif kernel_type=="bandlimited":
+                kernel=lapKernel.bandlimited_kernel(bandwidth=10)
+
         else:
-            diffusion_kernel=None
+            kernel=None
         params = {}
         print('Start training...')
-        gbt = GBDT(task, graph, train_mask, test_mask, val_mask,kernel=diffusion_kernel)
+        gbt = GBDT(task, graph, train_mask, test_mask, val_mask,kernel=kernel)
         metrics = gbt.train(params,
                 encoded_X,
                 target,

@@ -10,26 +10,41 @@ from torch.nn import init
 from sklearn import preprocessing
 from submodules import Propagate, PropagateNoPrecond , Attention, KernelPropagate
 class LaplacianKernel(object):
-    def __init__(self,graph,symmetric=True):
+    def __init__(self,graph,normalized=False,symmetric=True):
         adjacency=graph.adjacency_matrix()
         if symmetric:
             adjacency=(adjacency+adjacency.transpose(1,0))/2
         laplacian_matrix= torch.diag(torch.matmul(adjacency,torch.ones(adjacency.shape[0])))-adjacency
-        self.laplacian_matrix=laplacian_matrix
+        degree_norm=torch.diag(torch.pow(torch.matmul(adjacency,torch.ones(adjacency.shape[0])), -0.5))
+        normalized_laplacian_matrix=torch.eye(adjacency.shape[0])- torch.matmul(degree_norm,torch.matmul(adjacency,degree_norm))
+        self.laplacian_matrix=normalized_laplacian_matrix if normalized else laplacian_matrix
     def diffusion_kernel(self,sigma):
+        # use this to speed up https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.expm.html
+        eigenValues, eigenVectors=torch.eig(self.laplacian_matrix, eigenvectors=True)
+        eigenValues =eigenValues[:,0]
+        #idx = eigenValues.argsort()
+        #eigenValues = eigenValues[idx]
+        #eigenVectors = eigenVectors[:, idx]
+        eigenValuesTr=torch.diag(torch.exp(sigma**2*eigenValues/2))
+        kernel = torch.matmul(torch.matmul(eigenVectors,eigenValuesTr),eigenVectors.transpose(1,0))
+        return kernel
+
+    def bandlimited_kernel(self,bandwidth,w=100):
         # use this to speed up https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.expm.html
         eigenValues, eigenVectors=torch.eig(self.laplacian_matrix, eigenvectors=True)
         eigenValues =eigenValues[:,0]
         idx = eigenValues.argsort()
         eigenValues = eigenValues[idx]
         eigenVectors = eigenVectors[:, idx]
-        eigenValuesTr=torch.exp(sigma**2*eigenValues/2)
+        weights=torch.ones(eigenValues.shape)
+        weights[:bandwidth]=(1/w)*weights[:bandwidth]
+        weights[bandwidth:]=w*weights[bandwidth:]
+        eigenValuesTr=weights
         kernel = torch.matmul(torch.matmul(eigenVectors,eigenValuesTr),eigenVectors.transpose(1,0))
         return kernel
     def linear_kernel(self,sigma):
-        # use this to speed up https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.expm.html
-
-        return self.laplacian_matrix
+        kernel = torch.eye(self.laplacian_matrix.shape[0])+sigma**2*self.laplacian_matrix
+        return kernel
 class UnfoldindAndAttention(nn.Module):
     r"""
 

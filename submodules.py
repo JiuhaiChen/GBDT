@@ -27,14 +27,11 @@ class KernelPropagate(nn.Module):
         super().__init__()
         self.kernel=kernel.cuda()
 
-    def prop(self, Y):
-
-        Y=torch.matmul(self.kernel,Y)
-
-        return Y
-
     def forward(self, graph, Y, X, alp, lam):
-        return (1 - alp) * Y + alp * lam * self.prop(Y) + alp * D_power_bias_X(graph, X, -1, lam, 1 - lam)
+        Q=lam*self.kernel + torch.eye(self.kernel.shape[0]).cuda()
+        fXW=X
+        return Y- alp*(torch.matmul(Q,Y)- fXW)
+
 
 class PropagateNoPrecond(nn.Module):
     def __init__(self):
